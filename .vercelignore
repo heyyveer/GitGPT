@@ -1,0 +1,10 @@
+.git
+.github
+.kilo
+.venv
+__pycache__
+*.py[oc]
+data/
+test*.py
+tests/
+*.md

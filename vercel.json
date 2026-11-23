@@ -10,11 +10,22 @@
       "framework": "vite"
     }
   },
+  "functions": {
+    "server.py": {
+      "excludeFiles": "{data/**,frontend/**,tests/**,test*.py,*.md}"
+    }
+  },
   "rewrites": [
+    {
+      "source": "/api/(.*)",
+      "destination": {
+        "service": "app"
+      }
+    },
     {
       "source": "/(.*)",
       "destination": {
-        "service": "app"
+        "service": "frontend"
       }
     }
   ]

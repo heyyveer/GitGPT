@@ -7,7 +7,13 @@ load_dotenv()
 
 # Base directories
 BASE_DIR = Path(__file__).resolve().parent.parent
-DATA_DIR = BASE_DIR / "data"
+
+# On serverless platforms like Vercel or AWS Lambda, the filesystem is read-only except /tmp
+if os.getenv("VERCEL") or os.getenv("AWS_LAMBDA_FUNCTION_NAME"):
+    DATA_DIR = Path("/tmp/data")
+else:
+    DATA_DIR = Path(os.getenv("DATA_DIR", BASE_DIR / "data"))
+
 REPOSITORIES_DIR = DATA_DIR / "repositories"
 VECTOR_STORE_DIR = DATA_DIR / "vector_store"
 

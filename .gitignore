@@ -8,3 +8,10 @@ wheels/
 .env
 # Virtual environments
 .venv
+
+# Runtime data & caches
+data/
+
+# Frontend builds & dependencies
+frontend/node_modules/
+frontend/dist/
