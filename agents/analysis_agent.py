@@ -1,0 +1,87 @@
+from typing import Dict, Any, Optional, List
+from rag.retriever import RepositoryRetriever
+from rag.generator import AnswerGenerator
+from agents.verification_agent import VerificationAgent
+
+
+class AnalysisAgent:
+    """
+    Agent specialized in repository architecture, system design, component interactions,
+    data pipelines, technology stack breakdowns, and high-level structural analysis.
+    """
+
+    def __init__(self, vector_store, repository_path: Optional[str] = None, model: Optional[str] = None):
+        self.retriever = RepositoryRetriever(vector_store)
+        self.generator = AnswerGenerator(model=model)
+        self.repository_path = repository_path
+        self.verifier = VerificationAgent()
+
+    def run(self, question: str, history: Optional[List[Dict[str, Any]]] = None) -> Dict[str, Any]:
+        """
+        Perform architectural analysis on the repository code and structure.
+        """
+        documents = self.retriever.retrieve(question, k=6, prefer_code=True)
+
+        if not documents:
+            return {
+                "agent": "AnalysisAgent",
+                "answer": "No sufficient architectural components retrieved to analyze this system design.",
+                "documents": [],
+                "sources": [],
+                "verification": {"verified": True, "confidence": 1.0, "reason": "No code found."}
+            }
+
+        custom_instructions = """You are a Principal Software Architect.
+Provide a high-level, clear architectural breakdown based on the retrieved code and files.
+Include:
+1. 🏛️ Architecture Overview & Core Responsibilities
+2. 🔄 Data Flow & Component Interaction (optionally with a mermaid graph if helpful)
+3. 📦 Key Modules & Abstractions
+4. ⚙️ Tech Stack & Integrations"""
+
+        generation = self.generator.generate(
+            question=question,
+            documents=documents,
+            custom_instructions=custom_instructions,
+            history=history
+        )
+
+        answer = generation["answer"]
+        evidence_ids = generation["evidence_ids"] or list(range(len(documents)))
+
+        sources = []
+        for evidence_id in evidence_ids:
+            if evidence_id < 0 or evidence_id >= len(documents):
+                continue
+            doc = documents[evidence_id]
+            meta = doc.metadata
+            file_path = meta.get("file_path", "")
+            start_line = meta.get("start_line", 1)
+            end_line = meta.get("end_line", 1)
+
+            source_item = {
+                "file_path": file_path,
+                "start_line": start_line,
+                "end_line": end_line,
+                "symbol": meta.get("symbol", ""),
+                "symbol_type": meta.get("symbol_type", "architecture")
+            }
+            if not any(s["file_path"] == file_path and s["start_line"] == start_line for s in sources):
+                sources.append(source_item)
+
+        if sources and "Architectural Reference Files" not in answer:
+            answer += "\n\n### 🏛️ Architectural Reference Files\n"
+            for s in sources:
+                loc = f"`{s['file_path']}` (Lines {s['start_line']}-{s['end_line']})"
+                sym = f" — *Component*: `{s['symbol']}`" if s.get("symbol") else ""
+                answer += f"- {loc}{sym}\n"
+
+        verification = self.verifier.verify(answer=answer, documents=documents)
+
+        return {
+            "agent": "AnalysisAgent",
+            "answer": answer,
+            "documents": documents,
+            "sources": sources,
+            "verification": verification
+        }
